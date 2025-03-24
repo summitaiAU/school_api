@@ -160,17 +160,5 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Create a default superuser during startup (temporary solution)
-try:
-    from django.contrib.auth.models import User
-    from django.db.utils import OperationalError, ProgrammingError
-    try:
-        if not User.objects.filter(username='admin').exists():
-            User.objects.create_superuser('admin', 'admin@example.com', 'new_secure_password')
-            print("Superuser created successfully!")
-    except (OperationalError, ProgrammingError):
-        # This will happen on first deploy before migrations, so we can ignore it
-        pass
-except Exception as e:
-    print(f"Error creating superuser: {e}")
-    pass
+# Removed the problematic code that tries to create a superuser at import time
+# The reset_admin_password management command will handle this instead
