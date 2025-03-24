@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Data Import</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+        }
+        .result-container {
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">School Data Import Tool</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Import Excel Data</h5>
+            </div>
+            <div class="card-body">
+                <form id="importForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Select Excel File</label>
+                        <input class="form-control" type="file" id="excelFile" accept=".xlsx">
+                        <div class="form-text">
+                            File should contain sheets for Schools, Classes, and Students.
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload and Import</button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="loadingIndicator" class="text-center" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Processing your file. This may take a moment...</p>
+        </div>
+        
+        <div id="resultContainer" class="result-container">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Import Results</h5>
+                </div>
+                <div class="card-body">
+                    <div id="successAlert" class="alert alert-success" style="display: none;">
+                        <h4 class="alert-heading">Import Successful!</h4>
+                        <p id="successMessage"></p>
+                    </div>
+                    
+                    <div id="errorAlert" class="alert alert-danger" style="display: none;">
+                        <h4 class="alert-heading">Import Errors</h4>
+                        <p id="errorMessage"></p>
+                        <div id="errorDetails"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">API Documentation</h5>
+            </div>
+            <div class="card-body">
+                <h6>Available Endpoints:</h6>
+                <ul>
+                    <li><code>/api/schools/</code> - Manage schools</li>
+                    <li><code>/api/classes/</code> - Manage class information</li>
+                    <li><code>/api/students/</code> - Manage student data</li>
+                    <li><code>/api/import-excel/</code> - Import data from Excel files</li>
+                </ul>
+                <p>
+                    <strong>Authentication:</strong> All endpoints require authentication using Django's standard authentication system.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.getElementById('importForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file to import.');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Show loading indicator
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/import-excel/', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+                
+                const result = await response.json();
+                
+                // Hide loading indicator
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('resultContainer').style.display = 'block';
+                
+                if (response.ok) {
+                    // Show success message
+                    document.getElementById('successAlert').style.display = 'block';
+                    document.getElementById('errorAlert').style.display = 'none';
+                    
+                    document.getElementById('successMessage').innerHTML = `
+                        <p>Successfully imported:</p>
+                        <ul>
+                            <li>${result.schools_created} schools</li>
+                            <li>${result.classes_created} classes</li>
+                            <li>${result.students_created} students</li>
+                        </ul>
+                    `;
+                    
+                    // If there are warnings/errors but overall success
+                    if (result.errors && result.errors.length > 0) {
+                        const errorList = document.createElement('ul');
+                        result.errors.forEach(error => {
+                            const listItem = document.createElement('li');
+                            listItem.textContent = error;
+                            errorList.appendChild(listItem);
+                        });
+                        
+                        document.getElementById('successMessage').innerHTML += '<p>With the following warnings:</p>';
+                        document.getElementById('successMessage').appendChild(errorList);
+                    }
+                } else {
+                    // Show error message
+                    document.getElementById('successAlert').style.display = 'none';
+                    document.getElementById('errorAlert').style.display = 'block';
+                    
+                    document.getElementById('errorMessage').textContent = 'Failed to import data.';
+                    
+                    if (result.error) {
+                        document.getElementById('errorDetails').textContent = result.error;
+                    } else if (result.errors && result.errors.length > 0) {
+                        const errorList = document.createElement('ul');
+                        result.errors.forEach(error => {
+                            const listItem = document.createElement('li');
+                            listItem.textContent = error;
+                            errorList.appendChild(listItem);
+                        });
+                        document.getElementById('errorDetails').appendChild(errorList);
+                    }
+                }
+            } catch (error) {
+                // Handle fetch errors
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('resultContainer').style.display = 'block';
+                document.getElementById('successAlert').style.display = 'none';
+                document.getElementById('errorAlert').style.display = 'block';
+                
+                document.getElementById('errorMessage').textContent = 'An error occurred during the import.';
+                document.getElementById('errorDetails').textContent = error.message;
+            }
+        });
+    </script>
+</body>
+</html>
